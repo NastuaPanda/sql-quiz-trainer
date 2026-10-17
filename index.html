@@ -1,0 +1,669 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SQL Quiz Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: single centered column. Header with brand and score, progress bar, one question card at a time, result screen with score ring. */
+:root {
+  --bg: #0e0c16;
+  --surface: #171424;
+  --surface-2: #1f1b2f;
+  --line: #2c2742;
+  --text: #ece9f7;
+  --muted: #9b94b5;
+  --accent: #8b5cf6;
+  --accent-strong: #a78bfa;
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --good: #34d399;
+  --good-soft: rgba(52, 211, 153, 0.13);
+  --bad: #f87171;
+  --bad-soft: rgba(248, 113, 113, 0.13);
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  background-image: radial-gradient(900px 420px at 50% -120px, rgba(139, 92, 246, 0.16), transparent 70%);
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100vh;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+#root { max-width: 720px; margin: 0 auto; }
+button { font-family: inherit; }
+button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo { width: 38px; height: 38px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font-family: var(--font-code); font-weight: 600; font-size: 13px; color: #fff; flex: none; box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35); }
+.brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
+.brand p { margin: 0; font-size: 13px; color: var(--muted); }
+.score-pill { font-family: var(--font-code); font-size: 13px; padding: 7px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.score-pill b { color: var(--accent-strong); font-weight: 600; }
+
+.progress-wrap { margin-bottom: 20px; }
+.progress-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
+.progress-meta b { color: var(--text); font-weight: 700; }
+.bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c3aed, #a78bfa); transition: width 0.45s ease; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); }
+.topic { display: inline-block; font-family: var(--font-code); font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-strong); background: var(--accent-soft); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px; padding: 4px 9px; margin-bottom: 14px; }
+.q-text { margin: 0 0 16px; font-size: 21px; line-height: 1.35; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+pre.snippet { margin: 0 0 20px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-family: var(--font-code); font-size: 13.5px; line-height: 1.6; color: #d6ccff; overflow-x: auto; }
+
+.options { display: grid; gap: 10px; }
+.opt { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; background: var(--surface-2); color: var(--text); border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; cursor: pointer; font-size: 15px; line-height: 1.5; transition: border-color 0.15s, background 0.15s, transform 0.15s; }
+.opt:hover:not([aria-disabled="true"]) { border-color: var(--accent); background: #251f3a; transform: translateY(-1px); }
+.opt .key { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-family: var(--font-code); font-size: 13px; font-weight: 600; background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.opt .label { min-width: 0; overflow-wrap: anywhere; padding-top: 2px; }
+.opt.mono .label { font-family: var(--font-code); font-size: 13.5px; padding-top: 3px; }
+.opt[aria-disabled="true"] { cursor: default; }
+.opt.dim { opacity: 0.55; }
+.opt.correct { border-color: var(--good); background: var(--good-soft); }
+.opt.correct .key { background: var(--good); border-color: var(--good); color: #052e1c; }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .key { background: var(--bad); border-color: var(--bad); color: #3b0a0a; }
+
+.feedback { margin-top: 18px; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line); animation: rise 0.25s ease; }
+.feedback.ok { background: var(--good-soft); border-color: rgba(52, 211, 153, 0.4); }
+.feedback.no { background: var(--bad-soft); border-color: rgba(248, 113, 113, 0.4); }
+.feedback h3 { margin: 0 0 4px; font-size: 16px; font-weight: 800; }
+.feedback.ok h3 { color: var(--good); }
+.feedback.no h3 { color: var(--bad); }
+.feedback p { margin: 0; font-size: 14.5px; color: var(--text); }
+.feedback code, .hint code { font-family: var(--font-code); font-size: 13px; background: rgba(0, 0, 0, 0.3); padding: 1px 6px; border-radius: 5px; }
+
+.actions { display: flex; justify-content: flex-end; margin-top: 20px; min-height: 48px; }
+.btn { appearance: none; border: 0; cursor: pointer; font-size: 15px; font-weight: 700; padding: 13px 24px; border-radius: 12px; background: var(--accent); color: #fff; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35); transition: background 0.15s, transform 0.15s; }
+.btn:hover { background: #7c3aed; transform: translateY(-1px); }
+.btn.ghost { background: transparent; color: var(--accent-strong); border: 1.5px solid var(--accent); box-shadow: none; }
+.btn.ghost:hover { background: var(--accent-soft); }
+.hint { margin: 0; font-size: 13px; color: var(--muted); align-self: center; margin-right: auto; }
+
+.result { text-align: center; padding: 36px 28px 32px; }
+.ring { position: relative; width: 168px; height: 168px; margin: 0 auto 20px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .track { fill: none; stroke: var(--surface-2); stroke-width: 12; }
+.ring .val { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 326.73; stroke-dashoffset: var(--off); animation: fill 1s ease-out; }
+.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: 38px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.result h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
+.result .count { margin: 0 0 14px; color: var(--muted); font-size: 16px; }
+.result .count b { color: var(--text); }
+.result .msg { margin: 0 auto 24px; max-width: 44ch; font-size: 16px; text-wrap: balance; }
+.dots { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 26px; }
+.dots i { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-style: normal; font-family: var(--font-code); font-size: 11px; font-weight: 600; }
+.dots i.g { background: var(--good-soft); color: var(--good); border: 1px solid rgba(52, 211, 153, 0.4); }
+.dots i.b { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(248, 113, 113, 0.4); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fill { from { stroke-dashoffset: 326.73; } to { stroke-dashoffset: var(--off); } }
+@media (max-width: 520px) {
+  .card { padding: 20px 16px; }
+  .q-text { font-size: 19px; }
+  .btn { width: 100%; }
+  .actions { flex-direction: column-reverse; gap: 10px; }
+  .hint { margin-right: 0; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+(function () {
+  var h = React.createElement;
+  var useState = React.useState;
+
+  // Schemas shown above questions that need them
+  var EMP = "-- employees(id, name, department, salary, bonus, city, manager_id)";
+  var ORD = "-- orders(id, customer_id, amount, order_date)";
+  var CUS = "-- customers(id, name, country, email)";
+  var ORDCUS = ORD + "\n" + CUS;
+
+  // Each entry: topic, question, optional code, monospace options flag,
+  // options (the FIRST option is always the correct one, order is shuffled at runtime), explanation.
+  function q(topic, text, code, mono, options, explanation) {
+    return { topic: topic, text: text, code: code, mono: mono, options: options, explanation: explanation };
+  }
+
+  var BANK = [
+    // ---------- SELECT ----------
+    q("SELECT", "Який запит вибирає лише стовпці name та city з таблиці employees?", EMP, true, [
+      "SELECT name, city FROM employees;",
+      "SELECT FROM employees name, city;",
+      "GET name, city FROM employees;",
+      "SELECT name, city IN employees;"
+    ], "Стовпці в SELECT перелічують через кому, а після FROM вказують таблицю. Порядок клауз фіксований: спочатку SELECT, потім FROM."),
+    q("SELECT", "Що поверне цей запит?", "SELECT * FROM customers;", false, [
+      "Усі стовпці та всі рядки таблиці customers",
+      "Лише перший стовпець таблиці customers",
+      "Кількість рядків у таблиці customers",
+      "Порожній результат, бо не вказано стовпці"
+    ], "Символ * у SELECT означає «усі стовпці». Оскільки умови WHERE немає, повертаються також усі рядки таблиці."),
+
+    // ---------- WHERE ----------
+    q("WHERE", "Як вибрати співробітників відділу Sales?", EMP, true, [
+      "SELECT * FROM employees WHERE department = 'Sales';",
+      "SELECT * WHERE department = 'Sales' FROM employees;",
+      "SELECT * FROM employees IF department = 'Sales';",
+      "SELECT * FROM employees FILTER BY department = 'Sales';"
+    ], "Умову фільтрації записують у WHERE після FROM, а текстові значення беруть в одинарні лапки. Інші варіанти порушують порядок клауз або містять неіснуючі ключові слова."),
+    q("WHERE", "Як вибрати співробітників із зарплатою не менше 4000 з міста Lisbon?", EMP, true, [
+      "SELECT * FROM employees WHERE salary >= 4000 AND city = 'Lisbon';",
+      "SELECT * FROM employees WHERE salary > 4000 AND city = 'Lisbon';",
+      "SELECT * FROM employees WHERE salary >= 4000 OR city = 'Lisbon';",
+      "SELECT * FROM employees WHERE salary <= 4000 AND city = 'Lisbon';"
+    ], "«Не менше 4000» означає >= 4000, тобто сама межа входить. AND вимагає виконання обох умов одночасно, а OR пропустив би рядки, що відповідають лише одній із них."),
+
+    // ---------- ORDER BY ----------
+    q("ORDER BY", "Як відсортувати співробітників за відділом від А до Я, а всередині відділу за зарплатою від більшої до меншої?", EMP, true, [
+      "SELECT * FROM employees ORDER BY department ASC, salary DESC;",
+      "SELECT * FROM employees ORDER BY department DESC, salary ASC;",
+      "SELECT * FROM employees ORDER BY salary DESC, department ASC;",
+      "SELECT * FROM employees ORDER BY department, salary;"
+    ], "ORDER BY сортує за першим виразом, а наступні застосовує лише для рядків із рівним значенням попереднього. Тому department іде першим. Без вказаного напрямку діє ASC, тож salary без DESC сортувалася б за зростанням."),
+    q("ORDER BY", "Який напрямок сортування діє, якщо після ORDER BY не вказати ASC або DESC?", null, false, [
+      "ASC: за зростанням",
+      "DESC: за спаданням",
+      "Випадковий порядок",
+      "Порядок, у якому рядки були додані в таблицю"
+    ], "За замовчуванням ORDER BY сортує за зростанням, тобто це ASC. Без ORDER BY база даних не гарантує жодного порядку рядків."),
+
+    // ---------- DISTINCT ----------
+    q("DISTINCT", "Який запит рахує кількість різних країн у таблиці customers?", CUS, true, [
+      "SELECT COUNT(DISTINCT country) FROM customers;",
+      "SELECT DISTINCT COUNT(country) FROM customers;",
+      "SELECT COUNT(country) FROM customers;",
+      "SELECT UNIQUE COUNT(country) FROM customers;"
+    ], "COUNT(DISTINCT стовпець) рахує лише унікальні значення. COUNT(country) без DISTINCT рахує всі непорожні значення разом із повторами, а DISTINCT перед COUNT застосувався б уже до єдиного рядка результату."),
+    q("DISTINCT", "Що поверне цей запит?", "SELECT DISTINCT department, city FROM employees;", false, [
+      "Унікальні комбінації значень department і city",
+      "Унікальні значення лише стовпця department",
+      "Унікальні значення лише стовпця city",
+      "Усі рядки таблиці без змін"
+    ], "DISTINCT діє на весь набір вибраних стовпців, а не на перший із них. Рядок вважається дублікатом, лише якщо збігаються і department, і city."),
+
+    // ---------- LIMIT ----------
+    q("LIMIT", "Як отримати 5 найвищих зарплат у PostgreSQL або MySQL?", EMP, true, [
+      "SELECT salary FROM employees ORDER BY salary DESC LIMIT 5;",
+      "SELECT salary FROM employees LIMIT 5 ORDER BY salary DESC;",
+      "SELECT salary FROM employees ORDER BY salary ASC LIMIT 5;",
+      "SELECT salary FROM employees LIMIT 5 DESC;"
+    ], "Спочатку рядки сортують за спаданням, а потім LIMIT залишає перші 5. LIMIT завжди стоїть після ORDER BY, а ASC дав би п'ять найнижчих зарплат."),
+    q("LIMIT", "Що робить LIMIT 3 OFFSET 6?", null, false, [
+      "Пропускає перші 6 рядків і повертає наступні 3",
+      "Повертає рядки з 3-го по 6-й",
+      "Повертає 6 рядків, пропустивши перші 3",
+      "Повертає 9 рядків"
+    ], "OFFSET задає, скільки рядків пропустити, а LIMIT — скільки повернути після цього. Тут пропускаються 6 рядків і повертаються 7-й, 8-й та 9-й."),
+
+    // ---------- LIKE ----------
+    q("LIKE", "Який запит знаходить клієнтів, чиє ім'я починається з літери A?", CUS, true, [
+      "SELECT * FROM customers WHERE name LIKE 'A%';",
+      "SELECT * FROM customers WHERE name LIKE '%A';",
+      "SELECT * FROM customers WHERE name LIKE '%A%';",
+      "SELECT * FROM customers WHERE name LIKE 'A_';"
+    ], "У шаблоні LIKE символ % замінює будь-яку кількість символів. Шаблон 'A%' означає «починається з A». '%A' шукає закінчення на A, '%A%' шукає A будь-де, а 'A_' збігається лише з двосимвольними іменами."),
+    q("LIKE", "Що означає символ _ (підкреслення) у шаблоні LIKE?", null, false, [
+      "Рівно один будь-який символ",
+      "Нуль або більше будь-яких символів",
+      "Рівно одну цифру",
+      "Буквальний символ підкреслення"
+    ], "У LIKE символ _ замінює рівно один будь-який символ, а % замінює довільну кількість символів, включно з нулем. Щоб шукати саме підкреслення, його потрібно екранувати."),
+    q("LIKE", "Який запит знаходить email-адреси, що закінчуються на @gmail.com?", CUS, true, [
+      "SELECT * FROM customers WHERE email LIKE '%@gmail.com';",
+      "SELECT * FROM customers WHERE email LIKE '@gmail.com%';",
+      "SELECT * FROM customers WHERE email LIKE '@gmail.com';",
+      "SELECT * FROM customers WHERE email LIKE '_@gmail.com';"
+    ], "Шаблон '%@gmail.com' означає «будь-що, а потім @gmail.com», тобто закінчення. Варіант без % збігається лише з точним рядком, а '_' дозволяє рівно один символ перед доменом."),
+
+    // ---------- IN ----------
+    q("IN", "Який запит вибирає клієнтів із країн Portugal або Spain?", CUS, true, [
+      "SELECT * FROM customers WHERE country IN ('Portugal', 'Spain');",
+      "SELECT * FROM customers WHERE country = ('Portugal', 'Spain');",
+      "SELECT * FROM customers WHERE country IN 'Portugal', 'Spain';",
+      "SELECT * FROM customers WHERE country = 'Portugal' AND country = 'Spain';"
+    ], "IN перевіряє, чи значення належить списку в дужках. Варіант з AND ніколи не спрацює, бо country не може одночасно дорівнювати двом різним значенням."),
+    q("IN", "Що поверне умова WHERE department NOT IN ('HR', 'IT')?", EMP, false, [
+      "Рядки, де department не дорівнює ні 'HR', ні 'IT'",
+      "Рядки, де department дорівнює 'HR' або 'IT'",
+      "Рядки, де department одночасно дорівнює 'HR' та 'IT'",
+      "Помилку, бо оператора NOT IN не існує"
+    ], "NOT IN залишає рядки, значення яких відсутнє в списку. Це заперечення IN, тобто вибираються всі відділи, крім HR та IT."),
+    q("IN", "Який запит повертає ті самі рядки, що й WHERE city = 'Porto' OR city = 'Lisbon'?", EMP, true, [
+      "SELECT * FROM employees WHERE city IN ('Porto', 'Lisbon');",
+      "SELECT * FROM employees WHERE city BETWEEN 'Porto' AND 'Lisbon';",
+      "SELECT * FROM employees WHERE city LIKE 'Porto' OR 'Lisbon';",
+      "SELECT * FROM employees WHERE city = 'Porto' AND city = 'Lisbon';"
+    ], "IN є короткою формою кількох умов, об'єднаних через OR. BETWEEN задає діапазон за алфавітом, а не список значень, тому тут він не підходить."),
+
+    // ---------- BETWEEN ----------
+    q("BETWEEN", "Як вибрати замовлення із сумою від 100 до 200 включно?", ORD, true, [
+      "SELECT * FROM orders WHERE amount BETWEEN 100 AND 200;",
+      "SELECT * FROM orders WHERE amount BETWEEN 100, 200;",
+      "SELECT * FROM orders WHERE amount > 100 AND amount < 200;",
+      "SELECT * FROM orders WHERE amount IN (100, 200);"
+    ], "BETWEEN a AND b еквівалентний умові >= a AND <= b, тож межі входять у діапазон. Варіант зі знаками > та < виключає межі, а IN перевіряє лише два конкретні значення."),
+    q("BETWEEN", "Чи входять граничні значення в діапазон BETWEEN 10 AND 20?", null, false, [
+      "Так, входять обидві межі: і 10, і 20",
+      "Ні, жодна з меж не входить",
+      "Входить лише нижня межа",
+      "Входить лише верхня межа"
+    ], "BETWEEN у SQL є включним: значення 10 і 20 теж потрапляють у результат. Тому він дорівнює умові >= 10 AND <= 20."),
+
+    // ---------- IS NULL ----------
+    q("IS NULL", "Як знайти співробітників, у яких не вказано bonus (значення NULL)?", EMP, true, [
+      "SELECT * FROM employees WHERE bonus IS NULL;",
+      "SELECT * FROM employees WHERE bonus = NULL;",
+      "SELECT * FROM employees WHERE bonus = 0;",
+      "SELECT * FROM employees WHERE bonus = '';"
+    ], "Порівняння зі значенням NULL за допомогою = ніколи не дає TRUE, тому потрібен спеціальний оператор IS NULL. Нуль і порожній рядок — це реальні значення, а не NULL."),
+    q("IS NULL", "Який логічний результат має вираз NULL = NULL?", null, false, [
+      "UNKNOWN (невідомо)",
+      "TRUE",
+      "FALSE",
+      "Помилка виконання"
+    ], "NULL означає відсутнє або невідоме значення, тому порівняння двох NULL дає UNKNOWN. У WHERE потрапляють лише рядки з результатом TRUE, тож такий рядок буде відкинуто."),
+    q("IS NULL", "Який запит рахує співробітників, у яких bonus заповнений?", EMP, true, [
+      "SELECT COUNT(*) FROM employees WHERE bonus IS NOT NULL;",
+      "SELECT COUNT(*) FROM employees WHERE bonus != NULL;",
+      "SELECT COUNT(*) FROM employees WHERE bonus <> NULL;",
+      "SELECT COUNT(*) FROM employees WHERE bonus > 0;"
+    ], "Для перевірки на наявність значення використовують IS NOT NULL. Оператори != та <> з NULL завжди дають UNKNOWN, тож не повернуть жодного рядка, а bonus > 0 відкинув би ще й нульові бонуси."),
+
+    // ---------- COUNT ----------
+    q("COUNT", "Яка різниця між COUNT(*) та COUNT(bonus)?", EMP, false, [
+      "COUNT(*) рахує всі рядки, а COUNT(bonus) лише рядки, де bonus не NULL",
+      "COUNT(*) рахує лише рядки без NULL, а COUNT(bonus) рахує всі рядки",
+      "Різниці немає, результат завжди однаковий",
+      "COUNT(bonus) додає значення bonus, а COUNT(*) рахує рядки"
+    ], "COUNT(*) враховує кожен рядок, а COUNT(стовпець) пропускає значення NULL у цьому стовпці. Додавання значень — це робота функції SUM."),
+    q("COUNT", "Який запит рахує замовлення із сумою більше 1000?", ORD, true, [
+      "SELECT COUNT(*) FROM orders WHERE amount > 1000;",
+      "SELECT COUNT(amount > 1000) FROM orders;",
+      "SELECT COUNT(1000) FROM orders;",
+      "SELECT COUNT(*) FROM orders GROUP BY amount > 1000;"
+    ], "Спочатку WHERE відфільтровує потрібні рядки, а потім COUNT(*) їх рахує. COUNT(amount > 1000) і COUNT(1000) рахують усі рядки, бо вираз не є NULL, а GROUP BY повернув би окремий підрахунок для кожної групи."),
+    q("COUNT", "Що поверне цей запит?", "SELECT COUNT(DISTINCT customer_id) FROM orders;", false, [
+      "Кількість різних клієнтів, які зробили замовлення",
+      "Загальну кількість замовлень",
+      "Суму всіх значень customer_id",
+      "Найбільше значення customer_id"
+    ], "COUNT(DISTINCT customer_id) рахує унікальні ідентифікатори клієнтів. Якщо клієнт зробив кілька замовлень, він усе одно враховується один раз."),
+
+    // ---------- SUM ----------
+    q("SUM", "Який запит повертає загальну суму замовлень клієнта з customer_id = 7?", ORD, true, [
+      "SELECT SUM(amount) FROM orders WHERE customer_id = 7;",
+      "SELECT COUNT(amount) FROM orders WHERE customer_id = 7;",
+      "SELECT AVG(amount) FROM orders WHERE customer_id = 7;",
+      "SELECT SUM(customer_id) FROM orders WHERE amount = 7;"
+    ], "WHERE залишає лише замовлення потрібного клієнта, а SUM(amount) додає їхні суми. COUNT рахує рядки, AVG повертає середнє, а останній варіант підсумовує ідентифікатори й фільтрує за сумою."),
+    q("SUM", "Що поверне SUM(bonus), якщо в усіх рядках bonus дорівнює NULL?", EMP, false, [
+      "NULL",
+      "0",
+      "Помилку виконання",
+      "Кількість рядків у таблиці"
+    ], "SUM ігнорує значення NULL, а якщо немає жодного значення для додавання, повертає NULL, а не нуль. Щоб отримати 0, можна використати COALESCE(SUM(bonus), 0)."),
+
+    // ---------- AVG ----------
+    q("AVG", "Як обчислити середню зарплату співробітників відділу IT?", EMP, true, [
+      "SELECT AVG(salary) FROM employees WHERE department = 'IT';",
+      "SELECT MAX(salary) FROM employees WHERE department = 'IT';",
+      "SELECT COUNT(salary) FROM employees WHERE department = 'IT';",
+      "SELECT AVG(department) FROM employees WHERE salary = 'IT';"
+    ], "AVG повертає середнє арифметичне значень стовпця, а WHERE обмежує вибірку відділом IT. MAX дає найбільше значення, COUNT — кількість, а останній запит плутає стовпці місцями."),
+    q("AVG", "Як функція AVG(bonus) обробляє значення NULL?", EMP, false, [
+      "Ігнорує такі рядки й ділить суму на кількість значень, що не є NULL",
+      "Вважає NULL нулем і враховує такі рядки в середньому",
+      "Повертає NULL, якщо хоча б одне значення дорівнює NULL",
+      "Видаляє рядки з NULL з таблиці"
+    ], "Усі агрегатні функції, крім COUNT(*), пропускають NULL. Тому AVG(bonus) може відрізнятися від SUM(bonus) / COUNT(*), якщо в таблиці є порожні бонуси."),
+
+    // ---------- GROUP BY ----------
+    q("GROUP BY", "Який запит показує суму замовлень для кожного клієнта?", ORD, true, [
+      "SELECT customer_id, SUM(amount) FROM orders GROUP BY customer_id;",
+      "SELECT customer_id, SUM(amount) FROM orders ORDER BY customer_id;",
+      "SELECT customer_id, SUM(amount) FROM orders WHERE customer_id;",
+      "SELECT customer_id, SUM(amount) FROM orders;"
+    ], "GROUP BY формує групу рядків для кожного customer_id, і SUM рахується окремо в кожній групі. ORDER BY лише сортує, а без групування звичайний стовпець не можна поєднувати з агрегатною функцією."),
+    q("GROUP BY", "Чому в стандартному SQL та PostgreSQL цей запит завершиться помилкою?", "SELECT department, name, COUNT(*)\nFROM employees\nGROUP BY department;", false, [
+      "Стовпця name немає в GROUP BY, і він не обгорнутий агрегатною функцією",
+      "COUNT(*) не можна використовувати разом із GROUP BY",
+      "GROUP BY працює лише з числовими стовпцями",
+      "Для групування таблиця має бути відсортована"
+    ], "Кожен стовпець у SELECT має або входити в GROUP BY, або використовуватись усередині агрегатної функції. Для групи з багатьма співробітниками значення name неоднозначне."),
+    q("GROUP BY", "Як GROUP BY city, department формує групи?", EMP, false, [
+      "Кожна унікальна комбінація city та department утворює окрему групу",
+      "Рядки групуються за city, а department ігнорується",
+      "У групу потрапляють лише рядки, де city дорівнює department",
+      "Кожен рядок стає окремою групою"
+    ], "Коли в GROUP BY кілька стовпців, групою вважається набір рядків з однаковою комбінацією всіх цих значень. Наприклад, Lisbon + IT і Lisbon + HR це дві різні групи."),
+
+    // ---------- HAVING ----------
+    q("HAVING", "Який запит знаходить відділи із середньою зарплатою вище 3500?", EMP, true, [
+      "SELECT department FROM employees GROUP BY department HAVING AVG(salary) > 3500;",
+      "SELECT department FROM employees WHERE AVG(salary) > 3500 GROUP BY department;",
+      "SELECT department FROM employees GROUP BY department WHERE AVG(salary) > 3500;",
+      "SELECT department FROM employees HAVING AVG(salary) > 3500 GROUP BY department;"
+    ], "Фільтр за агрегатною функцією записують у HAVING, який іде після GROUP BY. WHERE виконується до групування, тому агрегатні функції в ньому недопустимі."),
+    q("HAVING", "Який запит знаходить клієнтів, що зробили щонайменше 3 замовлення?", ORD, true, [
+      "SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) >= 3;",
+      "SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 3;",
+      "SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) <= 3;",
+      "SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) = 3;"
+    ], "«Щонайменше 3» означає 3 і більше, тому потрібна умова >= 3. Знак > виключив би клієнтів рівно з трьома замовленнями, <= дав би тих, хто має не більше трьох, а = лише рівно три."),
+    q("HAVING", "У якому порядку SQL логічно обробляє клаузи запиту?", null, false, [
+      "FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY",
+      "FROM, SELECT, WHERE, GROUP BY, HAVING, ORDER BY",
+      "SELECT, FROM, WHERE, HAVING, GROUP BY, ORDER BY",
+      "WHERE, FROM, GROUP BY, SELECT, HAVING, ORDER BY"
+    ], "Спочатку береться таблиця (FROM), потім відфільтровуються рядки (WHERE), формуються групи (GROUP BY) і фільтруються групи (HAVING). Лише після цього обчислюється SELECT і виконується сортування. Тому псевдонім зі SELECT недоступний у WHERE."),
+
+    // ---------- INNER JOIN ----------
+    q("INNER JOIN", "Який запит повертає замовлення разом з іменами клієнтів, відкидаючи замовлення без клієнта?", ORDCUS, true, [
+      "SELECT o.id, c.name FROM orders o INNER JOIN customers c ON o.customer_id = c.id;",
+      "SELECT o.id, c.name FROM orders o INNER JOIN customers c ON o.id = c.id;",
+      "SELECT o.id, c.name FROM orders o INNER JOIN customers c ON o.customer_id = c.customer_id;",
+      "SELECT o.id, c.name FROM orders o INNER JOIN customers c ON o.amount = c.id;"
+    ], "Умова з'єднання має зіставляти зовнішній ключ orders.customer_id з первинним ключем customers.id. Інші варіанти порівнюють неповʼязані стовпці або посилаються на стовпець, якого немає в customers."),
+    q("INNER JOIN", "Що станеться при INNER JOIN із замовленням, для якого немає клієнта в таблиці customers?", ORDCUS, false, [
+      "Це замовлення не потрапить у результат",
+      "Воно потрапить у результат із NULL у стовпцях клієнта",
+      "Воно потрапить у результат із нулями у стовпцях клієнта",
+      "Запит завершиться помилкою"
+    ], "INNER JOIN залишає лише рядки, для яких знайдено збіг в обох таблицях. Рядки без пари відкидаються, а NULL замість відсутніх даних з'являються у LEFT JOIN."),
+    q("INNER JOIN", "Яка умова в самоз'єднанні знаходить керівника кожного співробітника?", "SELECT e.name, m.name\nFROM employees e\nINNER JOIN employees m\n  ON ...;\n" + EMP, true, [
+      "e.manager_id = m.id",
+      "e.id = m.id",
+      "e.id = m.manager_id",
+      "e.manager_id = m.manager_id"
+    ], "Стовпець manager_id співробітника e містить id його керівника, тому порівнюємо e.manager_id з m.id. Умова e.id = m.manager_id навпаки знайшла б підлеглих, а e.manager_id = m.manager_id знайшла б колег з одним керівником."),
+
+    // ---------- LEFT JOIN ----------
+    q("LEFT JOIN", "Який запит показує всіх клієнтів, навіть якщо вони не робили замовлень?", ORDCUS, true, [
+      "SELECT c.name, o.id FROM customers c LEFT JOIN orders o ON o.customer_id = c.id;",
+      "SELECT c.name, o.id FROM customers c INNER JOIN orders o ON o.customer_id = c.id;",
+      "SELECT c.name, o.id FROM customers c RIGHT JOIN orders o ON o.customer_id = c.id;",
+      "SELECT c.name, o.id FROM orders o LEFT JOIN customers c ON o.customer_id = c.id;"
+    ], "LEFT JOIN зберігає всі рядки лівої таблиці, тому ліворуч має стояти customers. У варіантах з RIGHT JOIN та з orders ліворуч зберігаються замовлення, а INNER JOIN відкидає клієнтів без замовлень."),
+    q("LEFT JOIN", "Як знайти клієнтів, які не зробили жодного замовлення?", ORDCUS, true, [
+      "SELECT c.name FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL;",
+      "SELECT c.name FROM customers c INNER JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL;",
+      "SELECT c.name FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id = NULL;",
+      "SELECT c.name FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NOT NULL;"
+    ], "Після LEFT JOIN у клієнтів без замовлень стовпці orders містять NULL, тому їх відбирає умова o.id IS NULL. INNER JOIN не залишає таких рядків, = NULL ніколи не спрацьовує, а IS NOT NULL вибрав би клієнтів із замовленнями."),
+    q("LEFT JOIN", "Які значення отримають стовпці правої таблиці для рядка лівої таблиці, що не має збігу?", null, false, [
+      "NULL",
+      "0",
+      "Порожній рядок ''",
+      "Такий рядок зникає з результату"
+    ], "У LEFT JOIN рядок лівої таблиці завжди зберігається, а відсутні дані правої таблиці заповнюються значеннями NULL. Зникнення рядка характерне для INNER JOIN."),
+
+    // ---------- Subqueries ----------
+    q("Subqueries", "Як знайти співробітників із зарплатою вищою за середню по всій компанії?", EMP, true, [
+      "SELECT name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);",
+      "SELECT name FROM employees WHERE salary > AVG(salary);",
+      "SELECT name FROM employees WHERE salary > SELECT AVG(salary) FROM employees;",
+      "SELECT name FROM employees HAVING salary > AVG(salary);"
+    ], "Середнє значення обчислює підзапит у дужках, а зовнішній запит порівнює з ним salary кожного рядка. Агрегатну функцію не можна викликати прямо у WHERE, а підзапит без дужок є синтаксичною помилкою."),
+    q("Subqueries", "Який запит вибирає клієнтів, які зробили хоча б одне замовлення?", ORDCUS, true, [
+      "SELECT name FROM customers WHERE id IN (SELECT customer_id FROM orders);",
+      "SELECT name FROM customers WHERE id IN (SELECT id FROM orders);",
+      "SELECT name FROM customers WHERE id = (SELECT customer_id FROM orders);",
+      "SELECT name FROM customers WHERE EXISTS (SELECT customer_id FROM orders);"
+    ], "Підзапит повертає список customer_id із замовлень, а IN перевіряє, чи є id клієнта в цьому списку. Другий варіант порівнює з id замовлень, = очікує одне значення, а некорельований EXISTS повернув би всіх клієнтів, якщо в orders є хоч один рядок."),
+    q("Subqueries", "Яку вимогу має виконувати підзапит у виразі WHERE salary > (SELECT ...)?", null, false, [
+      "Повертати рівно одне значення: один рядок і один стовпець",
+      "Повертати кілька стовпців",
+      "Обов'язково містити GROUP BY",
+      "Обов'язково мати псевдонім"
+    ], "Знаки порівняння на кшталт > очікують одне скалярне значення. Якщо потрібен список значень, використовують IN, ANY або ALL."),
+
+    // ---------- CTE ----------
+    q("CTE", "Який синтаксис створює CTE з назвою high_paid?", EMP, true, [
+      "WITH high_paid AS (SELECT * FROM employees WHERE salary > 5000) SELECT name FROM high_paid;",
+      "CREATE CTE high_paid AS (SELECT * FROM employees WHERE salary > 5000) SELECT name FROM high_paid;",
+      "WITH high_paid = (SELECT * FROM employees WHERE salary > 5000) SELECT name FROM high_paid;",
+      "DECLARE high_paid AS (SELECT * FROM employees WHERE salary > 5000) SELECT name FROM high_paid;"
+    ], "Загальний табличний вираз (CTE) оголошують ключовим словом WITH, після імені ставлять AS, а в дужках записують запит. Конструкцій CREATE CTE та WITH ... = у SQL не існує."),
+    q("CTE", "Як довго існує CTE, оголошений через WITH?", null, false, [
+      "Лише під час виконання того запиту, до якого він належить",
+      "До кінця сеансу, як тимчасова таблиця",
+      "Постійно зберігається в базі даних як представлення",
+      "Доступний усім користувачам бази даних"
+    ], "CTE є іменованим результатом, який видно лише всередині одного оператора. Для багаторазового використання між запитами створюють VIEW або тимчасову таблицю."),
+    q("CTE", "Як оголосити два CTE в одному запиті?", null, true, [
+      "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT * FROM a, b;",
+      "WITH a AS (SELECT 1 AS x) WITH b AS (SELECT 2 AS y) SELECT * FROM a, b;",
+      "WITH a AS (SELECT 1 AS x); WITH b AS (SELECT 2 AS y) SELECT * FROM a, b;",
+      "WITH a, b AS (SELECT 1 AS x, 2 AS y) SELECT * FROM a, b;"
+    ], "Ключове слово WITH пишуть один раз, а кілька CTE перелічують через кому. Повторний WITH, крапка з комою між CTE та спільна назва для двох виразів є синтаксичними помилками."),
+
+    // ---------- Window Functions ----------
+    q("Window Functions", "Що робить функція ROW_NUMBER() OVER (ORDER BY salary DESC)?", EMP, false, [
+      "Нумерує рядки 1, 2, 3 і так далі за спаданням зарплати, не об'єднуючи їх",
+      "Групує рядки з однаковою зарплатою й рахує їх кількість",
+      "Повертає загальну кількість рядків у таблиці в кожному рядку",
+      "Видаляє рядки з однаковою зарплатою"
+    ], "Віконна функція ROW_NUMBER присвоює кожному рядку порядковий номер відповідно до ORDER BY всередині OVER. Рядки при цьому не згортаються й не видаляються."),
+    q("Window Functions", "Який запит обчислює ранг зарплати окремо всередині кожного відділу?", EMP, true, [
+      "SELECT name, RANK() OVER (PARTITION BY department ORDER BY salary DESC) FROM employees;",
+      "SELECT name, RANK() OVER (ORDER BY department, salary DESC) FROM employees;",
+      "SELECT name, RANK() OVER (GROUP BY department ORDER BY salary DESC) FROM employees;",
+      "SELECT name, RANK(department) OVER (ORDER BY salary DESC) FROM employees;"
+    ], "PARTITION BY розбиває рядки на незалежні вікна, і ранг починається спочатку в кожному відділі. Без PARTITION BY створюється один спільний ранг, а GROUP BY всередині OVER не дозволений."),
+    q("Window Functions", "Чим віконна функція з OVER відрізняється від агрегатної функції з GROUP BY?", null, false, [
+      "Віконна функція зберігає всі рядки результату, а GROUP BY згортає їх у групи",
+      "Віконна функція згортає рядки в групи, а GROUP BY зберігає всі рядки",
+      "Віконні функції не можуть працювати з SUM та AVG",
+      "Різниці між ними немає"
+    ], "GROUP BY повертає один рядок на групу, тоді як віконна функція додає обчислене значення до кожного вихідного рядка. Завдяки цьому поруч із даними рядка можна показати, наприклад, середнє по відділу."),
+    q("Window Functions", "Що повертає SUM(amount) OVER (ORDER BY order_date) для кожного рядка таблиці orders?", ORD, false, [
+      "Наростаючий підсумок суми amount від найранішої дати до поточного рядка",
+      "Загальну суму amount по всій таблиці в кожному рядку",
+      "Лише значення amount поточного рядка",
+      "Різницю між поточним і попереднім значенням amount"
+    ], "Коли в OVER вказано ORDER BY, SUM рахується з початку вікна до поточного рядка, тому виходить накопичувальна сума (running total). Загальна сума в кожному рядку вийшла б без ORDER BY."),
+  ];
+
+  var QUIZ_SIZE = 10;
+
+  // Fisher-Yates shuffle on a copy of the array
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  // Pick 10 distinct questions in random order and shuffle each question's options
+  function buildQuiz() {
+    return shuffle(BANK).slice(0, QUIZ_SIZE).map(function (item) {
+      var opts = shuffle(item.options.map(function (text, i) { return { text: text, ok: i === 0 }; }));
+      var correct = 0;
+      opts.forEach(function (o, i) { if (o.ok) correct = i; });
+      return {
+        topic: item.topic,
+        text: item.text,
+        code: item.code,
+        mono: item.mono,
+        options: opts.map(function (o) { return o.text; }),
+        correct: correct,
+        explanation: item.explanation
+      };
+    });
+  }
+
+  function newGame() {
+    return { quiz: buildQuiz(), index: 0, selected: null, score: 0, results: [], done: false };
+  }
+
+  var LETTERS = ["A", "B", "C", "D"];
+
+  // Wrap SQL keywords in inline code inside explanations
+  var KEYWORDS = /\b(IS NOT NULL|IS NULL|INNER JOIN|LEFT JOIN|RIGHT JOIN|ORDER BY|GROUP BY|PARTITION BY|NOT IN|SELECT|FROM|WHERE|HAVING|DISTINCT|JOIN|LIMIT|OFFSET|LIKE|IN|BETWEEN|COUNT|SUM|AVG|MAX|COALESCE|EXISTS|WITH|OVER|ROW_NUMBER|RANK|ASC|DESC|NULL|AND|OR|ON|AS)\b/g;
+  function richText(text) {
+    var parts = [];
+    var last = 0, m, i = 0;
+    KEYWORDS.lastIndex = 0;
+    while ((m = KEYWORDS.exec(text)) !== null) {
+      if (m.index > last) parts.push(text.slice(last, m.index));
+      parts.push(h("code", { key: "k" + i++ }, m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return parts;
+  }
+
+  function messageFor(pct) {
+    if (pct === 100) return "Бездоганно! Ви відповіли на всі питання правильно. Час братися за складніші запити.";
+    if (pct >= 80) return "Чудовий результат! Основи SQL ви знаєте впевнено, лишилося відшліфувати кілька деталей.";
+    if (pct >= 60) return "Непогано! Ви на правильному шляху. Повторіть теми, де були помилки, і спробуйте ще раз.";
+    if (pct >= 40) return "Хороший початок. Перегляньте пояснення до питань і пройдіть тест знову, прогрес буде швидким.";
+    return "Не засмучуйтесь, усі з цього починають. Прочитайте пояснення і спробуйте ще раз: практика робить майстра.";
+  }
+
+  function App() {
+    var s = useState(newGame);
+    var state = s[0], setState = s[1];
+
+    var total = state.quiz.length;
+    var q = state.quiz[state.index];
+    var answered = state.selected !== null;
+
+    function choose(i) {
+      if (answered) return;
+      var ok = i === q.correct;
+      setState(Object.assign({}, state, {
+        selected: i,
+        score: state.score + (ok ? 1 : 0),
+        results: state.results.concat([ok])
+      }));
+    }
+
+    function next() {
+      if (!answered) return;
+      if (state.index + 1 >= total) {
+        setState(Object.assign({}, state, { done: true }));
+      } else {
+        setState(Object.assign({}, state, { index: state.index + 1, selected: null }));
+      }
+    }
+
+    function restart() {
+      setState(newGame());
+      try { window.scrollTo(0, 0); } catch (e) {}
+    }
+
+    var header = h("header", { className: "top" },
+      h("div", { className: "brand" },
+        h("div", { className: "logo", "aria-hidden": "true" }, "SQL"),
+        h("div", null,
+          h("h1", null, "SQL Quiz Trainer"),
+          h("p", null, "Перевірте свої знання SQL")
+        )
+      ),
+      h("div", { className: "score-pill", "aria-live": "polite" }, "Правильно: ", h("b", null, state.score), " / " + total)
+    );
+
+    if (state.done) {
+      var pct = Math.round((state.score / total) * 100);
+      var off = 326.73 * (1 - pct / 100);
+      return h(React.Fragment, null,
+        header,
+        h("div", { className: "progress-wrap" },
+          h("div", { className: "progress-meta" }, h("span", null, "Тест завершено"), h("b", null, "100%")),
+          h("div", { className: "bar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": 100 }, h("i", { style: { width: "100%" } }))
+        ),
+        h("main", { className: "card result" },
+          h("div", { className: "ring" },
+            h("svg", { viewBox: "0 0 120 120", "aria-hidden": "true" },
+              h("circle", { className: "track", cx: 60, cy: 60, r: 52 }),
+              h("circle", { className: "val", cx: 60, cy: 60, r: 52, style: { "--off": off } })
+            ),
+            h("div", { className: "pct" }, pct + "%")
+          ),
+          h("h2", null, "Ваш результат"),
+          h("p", { className: "count" }, "Правильних відповідей: ", h("b", null, state.score + " з " + total)),
+          h("div", { className: "dots", "aria-label": "Результати по питаннях" },
+            state.results.map(function (ok, i) {
+              return h("i", { key: i, className: ok ? "g" : "b", title: "Питання " + (i + 1) + ": " + (ok ? "правильно" : "неправильно") }, i + 1);
+            })
+          ),
+          h("p", { className: "msg" }, messageFor(pct)),
+          h("button", { className: "btn", type: "button", onClick: restart }, "Почати тест знову")
+        )
+      );
+    }
+
+    var progressPct = Math.round(((state.index + (answered ? 1 : 0)) / total) * 100);
+    var isLast = state.index + 1 >= total;
+    var wasCorrect = answered && state.selected === q.correct;
+
+    return h(React.Fragment, null,
+      header,
+      h("div", { className: "progress-wrap" },
+        h("div", { className: "progress-meta" },
+          h("span", null, "Питання ", h("b", null, state.index + 1), " з " + total),
+          h("span", null, progressPct + "%")
+        ),
+        h("div", { className: "bar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": progressPct },
+          h("i", { style: { width: progressPct + "%" } }))
+      ),
+      h("main", { className: "card", key: state.index },
+        h("span", { className: "topic" }, q.topic),
+        h("h2", { className: "q-text" }, q.text),
+        q.code ? h("pre", { className: "snippet" }, q.code) : null,
+        h("div", { className: "options", role: "group", "aria-label": "Варіанти відповіді" },
+          q.options.map(function (opt, i) {
+            var cls = "opt" + (q.mono ? " mono" : "");
+            if (answered) {
+              if (i === q.correct) cls += " correct";
+              else if (i === state.selected) cls += " wrong";
+              else cls += " dim";
+            }
+            return h("button", {
+              key: i, type: "button", className: cls,
+              "aria-disabled": answered ? "true" : "false",
+              onClick: function () { choose(i); }
+            },
+              h("span", { className: "key" }, LETTERS[i]),
+              h("span", { className: "label" }, opt)
+            );
+          })
+        ),
+        answered ? h("div", { className: "feedback " + (wasCorrect ? "ok" : "no"), role: "status" },
+          h("h3", null, wasCorrect ? "Правильно!" : "Неправильно"),
+          h("p", null,
+            wasCorrect ? null : "Правильна відповідь: " + LETTERS[q.correct] + ". ",
+            richText(q.explanation)
+          )
+        ) : null,
+        h("div", { className: "actions" },
+          answered ? null : h("p", { className: "hint" }, "Оберіть варіант відповіді"),
+          answered ? h("button", { className: "btn", type: "button", onClick: next },
+            isLast ? "Показати результат" : "Наступне питання") : null
+        )
+      )
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+})();
+</script>
+
+</body></html>
